@@ -33,24 +33,25 @@ class Build(JenkinsBase):
     def get_status(self):
         return self._data["result"]
 
-    def get_revision(self):
+    def get_revision(self, branch=None):
         vcs = self._data['changeSet']['kind'] or 'git'
-        return getattr(self, '_get_%s_rev' % vcs, lambda: None)()
+        return getattr(self, '_get_%s_rev' % vcs, lambda: None)(branch)
 
-    def _get_svn_rev(self):
+    def _get_svn_rev(self, branch):
         maxRevision = 0
         for repoPathSet in self._data["changeSet"]["revisions"]:
             maxRevision = max(repoPathSet["revision"], maxRevision)
         return maxRevision
 
-    def _get_git_rev(self):
+    def _get_git_rev(self, branch):
+        branch = branch or "origin/HEAD"
         for item in self._data['actions']:
             branch = item.get('buildsByBranchName')
-            head = branch and branch.get('origin/HEAD')
+            head = branch and branch.get(branch)
             if head:
                 return head['revision']['SHA1']
 
-    def _get_hg_rev(self):
+    def _get_hg_rev(self, branch):
         revs = [(item['date'], item['node'])
                 for item in self._data['changeSet']['items']]
         revs = sorted(revs, key=lambda tup: float(tup[0].split('-')[0]))
